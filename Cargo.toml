@@ -1,0 +1,13 @@
+[package]
+name = "my_bevy_game"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.7"
+game_utils = {path = "../space_sim/game_utils"}
+pid_controller = {path = "../space_sim/pid_controller"}
+inertial_measurement = {path = "../space_sim/inertial_measurement"}
+flight_controller = {path = "../space_sim/flight_controller"}
