@@ -1,11 +1,11 @@
 use bevy::prelude::Component;
 use game_utils::{
-    toggle::Toggle, 
     control_axis::{
-        ControlAxis, 
-        AxisContribution
+        ControlAxis,
+        AxisContribution,
     }, 
-    dimension3::Dimension3
+    dimension3::Dimension3,
+    toggle::Toggle,
 };
 use pid_controller::PID;
 use inertial_measurement::IMU;
@@ -14,88 +14,87 @@ use inertial_measurement::IMU;
 
 
 
-//#[derive(Component)]
-//pub struct Power{enabled: bool}
-//impl Toggle for Power{
-//    fn new(enabled: bool) -> Self{Self{enabled}}
-//    fn enabled(self: &Self) -> bool{self.enabled}
-//    fn toggle(self: &mut Self){self.enabled = !self.enabled}
-//}
-
 #[derive(Component)]
-//pub struct Power{pub toggle: Toggle}
-pub struct Power{enabled: bool}
+pub struct Power{inner: Toggle}
 impl Power{
-    pub fn new(enabled: bool) -> Self{Self{enabled}}
-}
-impl Toggle for Power{
-    fn enabled(self: &Self) -> bool{self.enabled}
-    fn toggle(self: &mut Self){self.enabled = !self.enabled}    
+    pub fn new(enabled: bool) -> Self{Self{inner: Toggle::new(enabled)}}
+    pub fn enabled(self: &Self) -> bool{self.inner.enabled()}
+    pub fn toggle(self: &mut Self){self.inner.toggle()}
 }
 
 #[derive(Component)]
-//pub struct LinearAssist{pub toggle: Toggle}
-pub struct LinearAssist{enabled: bool}
+pub struct LinearAssist{inner: Toggle}
 impl LinearAssist{
-    pub fn new(enabled: bool) -> Self{Self{enabled}}
-}
-impl Toggle for LinearAssist{
-    fn enabled(self: &Self) -> bool{self.enabled}
-    fn toggle(self: &mut Self){self.enabled = !self.enabled}
+    pub fn new(enabled: bool) -> Self{Self{inner: Toggle::new(enabled)}}
+    pub fn enabled(self: &Self) -> bool{self.inner.enabled()}
+    pub fn toggle(self: &mut Self){self.inner.toggle()}
+    pub fn inner(self: &Self) -> &Toggle{&self.inner}
 }
 
 #[derive(Component)]
-//pub struct RotationalAssist{pub toggle: Toggle}
-pub struct RotationalAssist{enabled: bool}
+pub struct RotationalAssist{inner: Toggle}
 impl RotationalAssist{
-    pub fn new(enabled: bool) -> Self{Self{enabled}}
-}
-impl Toggle for RotationalAssist{
-    fn enabled(self: &Self) -> bool{self.enabled}
-    fn toggle(self: &mut Self){self.enabled = !self.enabled}
+    pub fn new(enabled: bool) -> Self{Self{inner: Toggle::new(enabled)}}
+    pub fn enabled(self: &Self) -> bool{self.inner.enabled()}
+    pub fn toggle(self: &mut Self){self.inner.toggle()}
+    pub fn inner(self: &Self) -> &Toggle{&self.inner}
 }
 
 #[derive(Component)]
-//pub struct AutonomousMode{pub toggle: Toggle}
-pub struct AutonomousMode{enabled: bool}
+pub struct AutonomousMode{inner: Toggle}
 impl AutonomousMode{
-    pub fn new(enabled: bool) -> Self{Self{enabled}}
-}
-impl Toggle for AutonomousMode{
-    fn enabled(self: &Self) -> bool{self.enabled}
-    fn toggle(self: &mut Self){self.enabled = !self.enabled}
+    pub fn new(enabled: bool) -> Self{Self{inner: Toggle::new(enabled)}}
+    pub fn enabled(self: &Self) -> bool{self.inner.enabled()}
 }
 
 #[derive(Component)]
-pub struct PID6DOF{pub control_axis: ControlAxis<Dimension3<PID<f32>>>}
+pub struct PID6DOF{inner: ControlAxis<Dimension3<PID<f32>>>}
+impl PID6DOF{
+    pub fn new(control_axis: ControlAxis<Dimension3<PID<f32>>>) -> Self{Self{inner: control_axis}}
+    pub fn inner_mut(self: &mut Self) -> &mut ControlAxis<Dimension3<PID<f32>>>{&mut self.inner}
+}
 
 #[derive(Component)]
-pub struct MaxVelocity(pub ControlAxis<Dimension3<f32>>);
+pub struct MaxVelocity{inner: ControlAxis<Dimension3<f32>>}
+impl MaxVelocity{
+    pub fn new(control_axis: ControlAxis<Dimension3<f32>>) -> Self{Self{inner: control_axis}}
+    pub fn inner(self: &Self) -> &ControlAxis<Dimension3<f32>>{&self.inner}
+}
 
 #[derive(Component)]
-pub struct PilotAxisInput(pub ControlAxis<Dimension3<f32>>);
+pub struct PilotAxisInput{inner: ControlAxis<Dimension3<f32>>}
+impl PilotAxisInput{
+    pub fn new(control_axis: ControlAxis<Dimension3<f32>>) -> Self{Self{inner: control_axis}}
+    pub fn inner(self: &Self) -> &ControlAxis<Dimension3<f32>>{&self.inner}
+    pub fn inner_mut(self: &mut Self) -> &mut ControlAxis<Dimension3<f32>>{&mut self.inner}
+}
 
 #[derive(Component)]
-pub struct InertialMeasurementUnit(pub IMU<f32>);
+pub struct InertialMeasurementUnit{inner: IMU<f32>}
+impl InertialMeasurementUnit{
+    pub fn new(imu: IMU<f32>) -> Self{Self{inner: imu}}
+    pub fn velocity(self: &Self) -> &ControlAxis<Dimension3<f32>>{self.inner.velocity()}
+}
 
 #[derive(Component)]
 pub struct GSafety{
-    //pub toggle: Toggle,
-    enabled: bool,
-    pub max_acceleration: ControlAxis<Dimension3<AxisContribution<f32>>>,
+    inner: Toggle,
+    max_acceleration: ControlAxis<Dimension3<AxisContribution<f32>>>,
 }
 impl GSafety{
     pub fn new(
         enabled: bool, 
-        max_acceleration: ControlAxis<Dimension3<AxisContribution<f32>>>
+        max_acceleration: ControlAxis<Dimension3<AxisContribution<f32>>>,
     ) -> Self{
         Self{
-            enabled, 
+            inner: Toggle::new(enabled),
             max_acceleration
         }
     }
-}
-impl Toggle for GSafety{
-    fn enabled(self: &Self) -> bool{self.enabled}
-    fn toggle(self: &mut Self){self.enabled = !self.enabled}
+    pub fn enabled(self: &Self) -> bool{
+        self.inner.enabled()
+    }
+    pub fn max_acceleration(self: &Self) -> &ControlAxis<Dimension3<AxisContribution<f32>>>{
+        &self.max_acceleration
+    }
 }

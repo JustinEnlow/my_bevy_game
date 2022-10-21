@@ -1,6 +1,10 @@
 use bevy::{input::{keyboard::KeyCode, Input}, prelude::*};
 use crate::ship_components::*;
-use game_utils::{toggle::Toggle, control_axis::{ControlAxis, AxisContribution}, dimension3::{Dimension3, /*ClampedDimension3, ClampType*/}};
+use game_utils::{
+    control_axis::{ControlAxis, AxisContribution}, 
+    dimension3::Dimension3,
+    //toggle::{Toggle/*, TToggle*/},
+};
 use pid_controller::PID;
 use inertial_measurement::IMU;
 
@@ -26,8 +30,8 @@ pub fn spawn_ship_entity(mut commands: Commands){
         .insert(RotationalAssist::new(true))
         .insert(AutonomousMode::new(false))
         .insert(
-            PID6DOF{
-                control_axis: ControlAxis::new(
+            PID6DOF::new(
+                ControlAxis::new(
                     Dimension3::new(
                         PID::new(100.0, 0.0, 0.0, None), 
                         PID::new(100.0, 0.0, 0.0, None), 
@@ -39,10 +43,10 @@ pub fn spawn_ship_entity(mut commands: Commands){
                         PID::new(100.0, 0.0, 0.0, None)
                     )
                 )
-            }
+            )
         )
         .insert(
-            MaxVelocity(
+            MaxVelocity::new(
                 ControlAxis::new(
                     Dimension3::new(100.0, 100.0, 100.0),
                     Dimension3::new(100.0, 100.0, 100.0)
@@ -50,7 +54,7 @@ pub fn spawn_ship_entity(mut commands: Commands){
             )
         )
         .insert(
-            PilotAxisInput(
+            PilotAxisInput::new(
                 ControlAxis::new(
                     Dimension3::new(1.0, 0.0, 0.0),
                     Dimension3::new(0.0, 0.0, 0.0)
@@ -58,7 +62,7 @@ pub fn spawn_ship_entity(mut commands: Commands){
             )
         )
         .insert(
-            InertialMeasurementUnit(
+            InertialMeasurementUnit::new(
                 IMU::new(
                     ControlAxis::new(
                         Dimension3::new(0.0, 0.0, 0.0),
@@ -123,7 +127,7 @@ pub fn flight_control_system(
         gsafety,
     ) in query.iter_mut(){
 
-        if power./*toggle.*/enabled() == false{return;}
+        if power.enabled() == false{return;}
 
         // placeholder value. actual values will be determined  by thruster suite/propulsion control system
         let available_acceleration = ControlAxis::new(
@@ -140,46 +144,39 @@ pub fn flight_control_system(
         );
 
         let mut desired_acceleration = game_utils::sum_d3_control_axes(
-            if autonomous_mode./*toggle.*/enabled(){
+            if autonomous_mode.enabled(){
                 flight_controller::feedforward_controller::calculate_autonomous_mode_acceleration(
-                    &ControlAxis::new(Dimension3::default(0.0), Dimension3::default(0.0)),
-                    &ControlAxis::new(Dimension3::default(0.0), Dimension3::default(0.0)),
-                    &imu.0.velocity(),
-                    &max_velocity.0,
+                    &ControlAxis::default(Dimension3::default(0.0)),
+                    &ControlAxis::default(Dimension3::default(0.0)),
+                    imu.velocity(),
+                    max_velocity.inner(),
                     &available_acceleration,
                     time.delta_seconds(),
                 )
             }else{
                 flight_controller::feedforward_controller::calculate_pilot_control_mode_acceleration(
-                    &input.0,
-                    /*&*/linear_assist/*.toggle*/,
-                    /*&*/rotational_assist/*.toggle*/,
-                    &max_velocity.0,
-                    &imu.0.velocity(),
+                    input.inner(),
+                    linear_assist.inner(),
+                    rotational_assist.inner(),
+                    max_velocity.inner(),
+                    imu.velocity(),
                     &available_acceleration,
                     time.delta_seconds(),
                 )
             },
             flight_controller::feedback_controller::calculate(
-                &ControlAxis::new(
-                    Dimension3::default(0.0), 
-                    Dimension3::default(0.0)
-                ), 
-                // current translation/rotation
-                &ControlAxis::new(
-                    Dimension3::default(0.0),
-                    Dimension3::default(0.0)
-                ), 
-                &mut pid6dof.control_axis, 
+                &ControlAxis::default(Dimension3::default(0.0)), 
+                &ControlAxis::default(Dimension3::default(0.0)),    // current translation/rotation
+                pid6dof.inner_mut(), 
                 &available_acceleration,
                 time.delta_seconds(),
             )
         );
         
-        if gsafety./*toggle.*/enabled(){
+        if gsafety.enabled(){
             desired_acceleration = flight_controller::g_force_safety::process(
                 &desired_acceleration,
-                &gsafety.max_acceleration
+                gsafety.max_acceleration()
             )
         }
 
@@ -211,63 +208,63 @@ pub fn input_handling_system(
         //power
         if keyboard_input.pressed(KeyCode::P){
             power.toggle();
-            println!("power: {}", power./*toggle.*/enabled());
+            println!("power: {}", power.enabled());
         }
 
         //linear assist
         if keyboard_input.pressed(KeyCode::Z){
-            linear_assist./*toggle.*/toggle();
-            println!("linear assist: {}", linear_assist./*toggle.*/enabled());
+            linear_assist.toggle();
+            println!("linear assist: {}", linear_assist.enabled());
         }
         //rotational assist
         if keyboard_input.pressed(KeyCode::X){
-            rotational_assist./*toggle.*/toggle();
-            println!("rotational assist: {}", rotational_assist./*toggle.*/enabled());
+            rotational_assist.toggle();
+            println!("rotational assist: {}", rotational_assist.enabled());
         }
 
         //forward
         if keyboard_input.just_pressed(KeyCode::E){
-            pilot_axis_input.0.linear_mut().set_z(1.0)
+            pilot_axis_input.inner_mut().linear_mut().set_z(1.0)
         }
         if keyboard_input.just_released(KeyCode::E){
-            pilot_axis_input.0.linear_mut().set_z(0.0)
+            pilot_axis_input.inner_mut().linear_mut().set_z(0.0)
         }
         //backward
         if keyboard_input.just_pressed(KeyCode::D){
-            pilot_axis_input.0.linear_mut().set_z(-1.0)
+            pilot_axis_input.inner_mut().linear_mut().set_z(-1.0)
         }
         if keyboard_input.just_released(KeyCode::D){
-            pilot_axis_input.0.linear_mut().set_z(0.0)
+            pilot_axis_input.inner_mut().linear_mut().set_z(0.0)
         }
 
         //right
         if keyboard_input.just_pressed(KeyCode::F){
-            pilot_axis_input.0.linear_mut().set_x(1.0)
+            pilot_axis_input.inner_mut().linear_mut().set_x(1.0)
         }
         if keyboard_input.just_released(KeyCode::F){
-            pilot_axis_input.0.linear_mut().set_x(0.0)
+            pilot_axis_input.inner_mut().linear_mut().set_x(0.0)
         }
         //left
         if keyboard_input.just_pressed(KeyCode::S){
-            pilot_axis_input.0.linear_mut().set_x(-1.0)
+            pilot_axis_input.inner_mut().linear_mut().set_x(-1.0)
         }
         if keyboard_input.just_released(KeyCode::S){
-            pilot_axis_input.0.linear_mut().set_x(0.0)
+            pilot_axis_input.inner_mut().linear_mut().set_x(0.0)
         }
 
         //up
         if keyboard_input.just_pressed(KeyCode::Q){
-            pilot_axis_input.0.linear_mut().set_y(1.0)
+            pilot_axis_input.inner_mut().linear_mut().set_y(1.0)
         }
         if keyboard_input.just_released(KeyCode::Q){
-            pilot_axis_input.0.linear_mut().set_y(0.0)
+            pilot_axis_input.inner_mut().linear_mut().set_y(0.0)
         }
         //down
         if keyboard_input.just_pressed(KeyCode::A){
-            pilot_axis_input.0.linear_mut().set_y(-1.0)
+            pilot_axis_input.inner_mut().linear_mut().set_y(-1.0)
         }
         if keyboard_input.just_released(KeyCode::A){
-            pilot_axis_input.0.linear_mut().set_y(0.0)
+            pilot_axis_input.inner_mut().linear_mut().set_y(0.0)
         }
 
 
